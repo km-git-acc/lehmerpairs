@@ -1,0 +1,289 @@
+<html>
+
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.117.1/build/three.min.js""></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.101.1/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <style type="text/css">
+    body {
+        margin: 0px;
+        padding: 0px;
+    }
+    #container {
+        width:960px;
+        height:500px;
+    }
+    </style>
+
+</head>
+
+<body>
+<br>
+Select a zero index <select name='kval' id='kval' onchange='createlpplot(this);false;'>
+<option value='lp6709.csv'>6709</option>
+<option value='lp6709_detail.csv'>6709_detail</option>
+<option value='lp18859.csv'>18859</option>
+<option value='lp18859_detail.csv'>18859_detail</option>
+<option value='lp44555.csv'>44555</option>
+<option value='lp44555_detail.csv'>44555_detail</option>
+<option value='lp73997.csv'>73997</option>
+<option value='lp73997_detail.csv'>73997_detail</option>
+<option value='lp82552.csv'>82552</option>
+<option value='lp82552_detail.csv'>82552_detail</option>
+<option value='lp95248.csv'>95248</option>
+<option value='lp95248_detail.csv'>95248_detail</option>
+<option value='lp354769.csv'>354769</option>
+<option value='lp354769_detail.csv'>354769_detail</option>
+<option value='lp415587.csv'>415587</option>
+<option value='lp415587_detail.csv'>415587_detail</option>
+<option value='lp420891.csv'>420891</option>
+<option value='lp420891_detail.csv'>420891_detail</option>
+<option value='lp1115578.csv'>1115578</option>
+<option value='lp1115578_detail.csv'>1115578_detail</option>
+<option value='lp1048449114_detail.csv'>1048449114_detail</option>
+</select>
+<br>
+<div id='descrip'>Zooming in on the Lehmer pair (x<sub>k</sub>, x<sub>k+1</sub>) region with k=<span id='titlekval'>82252</span><br><font color=red>Complex zeros:Red</font>, <font color=green>Real zeros: Green</font><br>
+<span id='collpoint'></span></div>
+
+<!--div id="container"></div-->
+    <script>
+    // <!--
+
+    function createTextCanvas(text, color, font, size) {
+        size = size || 16;
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        var fontStr = (size + 'px ') + (font || 'Arial');
+        ctx.font = fontStr;
+        var w = ctx.measureText(text).width;
+        var h = Math.ceil(size);
+        canvas.width = w;
+        canvas.height = h;
+        ctx.font = fontStr;
+        ctx.fillStyle = color || 'black';
+        ctx.fillText(text, 0, Math.ceil(size * 0.8));
+        return canvas;
+    }
+
+    function createText2D(text, color, font, size, segW, segH) {
+        var canvas = createTextCanvas(text, color, font, size);
+        var plane = new THREE.PlaneGeometry(canvas.width, canvas.height, segW, segH);
+        var tex = new THREE.Texture(canvas);
+        tex.needsUpdate = true;
+        var spriteMaterial = new THREE.SpriteMaterial( { map: tex, useScreenCoordinates: false } );
+        var sprite = new THREE.Sprite( spriteMaterial );
+        sprite.scale.set( 15,5,15);
+        sprite.center.set( 0,1 );
+        return sprite;
+    }
+
+    function v(x, y, z) {
+        return new THREE.Vector3(x, y, z);
+    }
+
+
+    var renderer = new THREE.WebGLRenderer({
+        antialias: true
+    });
+    var w = 1536;
+    var h = 800;
+    renderer.setSize(w, h);
+    document.body.appendChild(renderer.domElement);
+
+    renderer.setClearColor(0xEEEEEE, 1.0);
+
+    var camera = new THREE.PerspectiveCamera(45, w / h, 1, 10000);
+    camera.position.z = 200;
+    camera.position.x = -100;
+    camera.position.y = 100;
+
+    controls = new THREE.OrbitControls (camera, renderer.domElement);
+
+    var scene = new THREE.Scene();
+
+function createlpplot(selectobj) {
+    if(selectobj==null) {var filename="lp6709.csv";}
+    else {var filename = selectobj.value;}
+    if(filename=="" || filename==null) filename="lp6709.csv";
+    var k = filename.replace(".csv","").replace("lp","");
+    document.getElementById("titlekval").innerHTML=k;
+    scene.remove.apply(scene, scene.children);
+    var scatterPlot = new THREE.Object3D();
+    scene.add(scatterPlot);
+
+    if(k=="6709_detail") zaxis_param=1.0;
+    else zaxis_param=0.0;
+
+    scatterPlot.rotation.y = 0;
+
+    var unfiltered = [];
+
+    var format = d3.format("+.10f");
+
+    var data = d3.csv(filename, function (d) {
+
+        d.forEach(function (d,i) {
+            unfiltered[i] = {
+                x: +d.x,
+                y: +d.y,
+                z: +d.t
+            };
+        })
+
+    var xExent = d3.extent(unfiltered, function (d) {return d.x; }),
+        yExent = d3.extent(unfiltered, function (d) {return d.y; }),
+        zExent = d3.extent(unfiltered, function (d) {return d.z; });
+
+    var vpts = {
+        xMax: xExent[1],
+        xCen: (xExent[1] + xExent[0]) / 2,
+        xMin: xExent[0],
+        yMax: yExent[1],
+        yCen: (yExent[1] + yExent[0]) / 2,
+        yMin: yExent[0],
+        zMax: zExent[1],
+        zCen: Math.min(zExent[1],0*(zExent[1] + zExent[0]) / 2),
+        zMin: zExent[0]
+    }
+
+    var xScale = d3.scale.linear().domain(xExent).range([-50,50]);
+    var yScale = d3.scale.linear().domain(yExent).range([-50,50]);
+    var zScale = d3.scale.linear().domain(zExent).range([-50,50]);
+
+    var lineGeo = new THREE.Geometry();
+    lineGeo.vertices.push(
+        v(xScale(vpts.xMin), yScale(vpts.yCen), zScale(vpts.zCen)), v(xScale(vpts.xMax), yScale(vpts.yCen), zScale(vpts.zCen)),
+        v(xScale(vpts.xCen), yScale(vpts.yCen), zScale(vpts.zCen)),
+        v(xScale(vpts.xCen), yScale(vpts.yMin), zScale(vpts.zCen)), v(xScale(vpts.xCen), yScale(vpts.yMax), zScale(vpts.zCen)),
+        v(xScale(vpts.xCen), yScale(vpts.yCen), zScale(vpts.zCen)),
+        v(xScale(vpts.xCen), yScale(vpts.yCen), zScale(vpts.zMax)), v(xScale(vpts.xCen), yScale(vpts.yCen), zScale(vpts.zMin))
+    );
+
+   var lineMat = new THREE.LineBasicMaterial({
+        color: 0x000000,
+        lineWidth: 1
+    });
+    var line = new THREE.Line(lineGeo, lineMat);
+    line.type = THREE.Lines;
+    scatterPlot.add(line);
+
+    var titleX = createText2D('x: ' + format(xExent[0]));
+    titleX.position.x = xScale(vpts.xMin) - 10;
+    titleX.position.y = yScale(vpts.yCen);
+    titleX.position.z = zScale(vpts.zCen);
+    scatterPlot.add(titleX);
+
+
+    var titleX = createText2D('x: ' + format(xExent[1]));
+    titleX.position.x = xScale(vpts.xMax) + 10;
+    titleX.position.y = yScale(vpts.yCen);
+    titleX.position.z = zScale(vpts.zCen);
+    scatterPlot.add(titleX);
+
+
+    var titleY = createText2D('y: ' + format(yExent[0]));
+    titleY.position.x = xScale(vpts.xCen);
+    titleY.position.y = yScale(vpts.yMin) - 10;
+    titleY.position.z = zScale(vpts.zCen);
+    scatterPlot.add(titleY);
+
+
+    var titleY = createText2D('y: ' + format(yExent[1]));
+    titleY.position.x = xScale(vpts.xCen);
+    titleY.position.y = yScale(vpts.yMax) + 10;
+    titleY.position.z = zScale(vpts.zCen);
+    scatterPlot.add(titleY);
+
+
+    var titleZ = createText2D('t: ' + format(zExent[0]));
+    titleZ.position.x = xScale(vpts.xCen);
+    titleZ.position.y = yScale(vpts.yCen);
+    titleZ.position.z = zScale(vpts.zMin) - 10;
+    scatterPlot.add(titleZ);
+
+    var titleZ = createText2D('t: ' + format(zExent[1]));
+    titleZ.position.x = xScale(vpts.xCen);
+    titleZ.position.y = yScale(vpts.yCen);
+    titleZ.position.z = zScale(vpts.zMax) + 10;
+    scatterPlot.add(titleZ);
+
+    var titleZ0 = createText2D('t='+vpts.zCen);
+    titleZ0.position.x = xScale(vpts.xCen);
+    titleZ0.position.y = yScale(vpts.yCen);
+    titleZ0.position.z = zScale(vpts.zCen);
+    scatterPlot.add(titleZ0);
+
+
+    var mat = new THREE.ParticleBasicMaterial({
+        vertexColors: true,
+        size: 1
+    });
+
+    var pointCount = unfiltered.length;
+    var pointGeo = new THREE.Geometry();
+    var collision = 0;
+    for (var i = 0; i < pointCount; i ++) {
+        var x = xScale(unfiltered[i].x);
+        var y = yScale(unfiltered[i].y);
+        var z = zScale(unfiltered[i].z);
+
+        pointGeo.vertices.push(new THREE.Vector3(x, y, z));
+        if(unfiltered[i].y!=0) pointGeo.colors.push(new THREE.Color(0xff0000));
+        else pointGeo.colors.push(new THREE.Color(0x00ff00));
+
+        if(unfiltered[i].y==0 && collision==0) {
+              collision=1;
+              var colltext = 'Collision Point : (x:' + unfiltered[i].x + ', t:' + unfiltered[i].z + ')';
+              document.getElementById('collpoint').innerHTML = colltext;
+        }
+
+    }
+    var points = new THREE.ParticleSystem(pointGeo, mat);
+    scatterPlot.add(points);
+
+    renderer.render(scene, camera);
+
+
+    var paused = false;
+    var last = new Date().getTime();
+
+    var animating = false;
+    window.ondblclick = function() {
+        animating = !animating;
+    };
+
+    function animate(t) {
+        if (!paused) {
+            last = t;
+            if (animating) {
+                var v = pointGeo.vertices;
+                for (var i = 0; i < v.length; i++) {
+                    var u = v[i];
+                    console.log(u)
+                    u.angle += u.speed * 0.01;
+                    u.x = Math.cos(u.angle) * u.radius;
+                    u.z = Math.sin(u.angle) * u.radius;
+                }
+                pointGeo.__dirtyVertices = true;
+            }
+            renderer.clear();
+            camera.lookAt(scene.position);
+            renderer.render(scene, camera);
+        }
+        window.requestAnimationFrame(animate, renderer.domElement);
+    };
+    animate(new Date().getTime());
+    onmessage = function(ev) {
+        paused = (ev.data == 'pause');
+    };
+
+    })
+}
+
+createlpplot(document.getElementById('kval'));
+    //-->
+    </script>
+</body>
+
+</html>
