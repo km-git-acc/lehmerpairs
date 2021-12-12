@@ -1,1 +1,92 @@
-placeholder for instructions to install Arb and dependencies, and compile the C files
+HOW TO INSTALL ARB ON LINUX OR MAC-OS PCs
+
+Arb itself can be downloaded here: https://github.com/fredrik-johansson/arb/releases
+
+Arb has the following dependencies:
+
+GMP (http://www.gmplib.org) 5.1.0 or later.
+MPFR (http://www.mpfr.org) 3.0.0 or later.
+FLINT (http://www.flintlib.org) version 2.5
+
+Download and unpack all of the above:
+
+For Linux/Mac:
+
+sudo su
+
+goto: usr/local/lib/
+
+mkdir mathlibs
+
+move each of the four folders ARB-x.x, GMP-y.y etc. into folder mathlibs:
+
+cd GMP-x.x:
+./configure
+make install
+
+cd MPFR-x.x:
+./configure
+make install
+
+cd FLINT-2.7.1 (takes long)
+./configure
+make install
+
+cd ARB-x.x:
+./configure
+make install
+
+To compile with links to the required libraries:
+
+gcc c-file.c -o runname —lgmp larb -lflint -lmpfr -lpthread
+
+To run the compiled code:
+./runname +parameters
+
+Only in case the above doesn't work:
+
+LD_LIBRARY_PATH = /usr/local/lib
+export LD_LIBRARY_PATH
+
+
+HOW TO INSTALL ARB ON A RASPBERRY PI
+
+See above for links to required Libraries
+
+sudo apt install m4 (probably already available)
+
+sudo su
+
+usr/local/lib/
+
+mkdir mathlibs
+
+cd GMP-x.x:
+For the config:
+chmod +x configure
+./configure
+For the make:
+chmod +x mpn/m4-ccas
+make install
+
+cd MPFR-x.x
+./configure
+make install
+
+cd FLINT-x.x (takes long)
+./configure
+make install
+
+cd ARB-x.x
+./configure
+make install
+
+To compile with links to the required libraries:
+
+gcc c-file.c -o runname —lgmp larb -lflint -lmpfr -lpthread
+
+LD_LIBRARY_PATH = /usr/local/lib
+export LD_LIBRARY_PATH
+
+To run the compiled code:
+./runname +parameters
